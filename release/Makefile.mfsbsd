@@ -1,0 +1,123 @@
+#
+# $FreeBSD$
+#
+#
+# Makefile for building mfsBSD images.
+#
+
+MFSBSD_TYPES?=		mfsbsd-se
+MFSBSD_FORMATS?=	img iso
+MFSBSD-SEIMG_DESC=	Special edition mfsBSD .img file including base.txz and kernel.txz
+MFSBSD-SEISO_DESC=	Special edition mfsBSD .iso file including base.txz and kernel.txz
+
+#
+# Paths
+#
+MFSBSD_DIR?=		${WORLDDIR}/contrib/mfsbsd
+MFSBSD_SRCDIR?=		/usr/src
+MFSBSD_TMPDIR?=		${.OBJDIR}/../contrib/mfsbsd_tmp
+MFSBSD_WRKDIR?=		${MFSBSD_TMPDIR}/work
+MFSBSD_DISTDIR!=	make -C ${MFSBSD_DIR} -V _DESTDIR WRKDIR=${MFSBSD_WRKDIR}
+MFSBSD_ROOTDIR!=	make -C ${MFSBSD_DIR} -V _ROOTDIR WRKDIR=${MFSBSD_WRKDIR}
+MFSBSD_MKINCLUDEDIR?=	/usr/share/mk
+
+#
+# Build defaults
+#
+MFSBSD_JOBS!=		sysctl -n hw.ncpu
+MFSBSD_KERNCONF?=	GENERIC
+MFSBSD_PKGSTATIC?=	/usr/local/sbin/pkg-static
+
+.if defined(WITH_MFSBSD) && !empty(WITH_MFSBSD)
+CLEANDIRS+=	${MFSBSD_TMPDIR}
+. for TYPE in ${MFSBSD_TYPES}
+.  for FORMAT in ${MFSBSD_FORMATS}
+CLEANFILES+=	${TYPE}.${FORMAT}
+.  endfor
+. endfor
+.endif
+
+mfsbsd-base:	mfsbsd-image
+
+mfsbsd-image:
+.if defined(WITH_MFSBSD) && !empty(WITH_MFSBSD)
+. for TYPE in ${MFSBSD_TYPES}
+.  for FORMAT in ${MFSBSD_FORMATS}
+	${IMAKE} ${.MAKEFLAGS} -C ${.CURDIR} ${TYPE}.${FORMAT}
+.  endfor
+. endfor
+.endif
+
+mfsbsd-se.img: mfsbsd-before-build mfsbsd-build mfsbsd-build-install
+	cd ${MFSBSD_TMPDIR} && ${IMAKE} -m ${MFSBSD_MKINCLUDEDIR} \
+		${.MAKEFLAGS} MAKEJOBS=${MFSBSD_JOBS} WRKDIR=${MFSBSD_WRKDIR} \
+		SE=1 IMAGE=${.TARGET} BASE=${.OBJDIR} image
+	install -m 0644 ${MFSBSD_TMPDIR}/${.TARGET} .
+
+mfsbsd-se.iso: mfsbsd-before-build mfsbsd-build mfsbsd-build-install
+	cd ${MFSBSD_TMPDIR} && ${IMAKE} -m ${MFSBSD_MKINCLUDEDIR} \
+		${.MAKEFLAGS} MAKEJOBS=${MFSBSD_JOBS} WRKDIR=${MFSBSD_WRKDIR} \
+		SE=1 ISOIMAGE=${.TARGET} BASE=${.OBJDIR} iso
+	install -m 0644 ${MFSBSD_TMPDIR}/${.TARGET} .
+
+mfsbsd-before-build: ${MFSBSD_WRKDIR}/.tmp_done
+${MFSBSD_WRKDIR}/.tmp_done:
+# Copy mfsBSD source files to the temporary folder. This is necessary to
+# prevent mfsBSD build process from writing to the src contrib directory.
+	mkdir -p ${MFSBSD_WRKDIR}
+	cp -rpf ${MFSBSD_DIR}/. ${MFSBSD_TMPDIR}/
+	touch ${MFSBSD_WRKDIR}/.tmp_done
+.if !exists(${MFSBSD_PKGSTATIC})
+# If pkg-static is not present at the device, mfsBSD build process
+# cannot proceed further. Thus, creating .packages_done bypasses
+# that specific part of the build process that requires pkg-static.
+	touch ${MFSBSD_WRKDIR}/.packages_done
+.endif
+
+mfsbsd-build: ${MFSBSD_WRKDIR}/.build_done
+${MFSBSD_WRKDIR}/.build_done:
+	cd ${MFSBSD_TMPDIR} && ${IMAKE} \
+		${.MAKEFLAGS} MAKEJOBS=${MFSBSD_JOBS} WRKDIR=${MFSBSD_WRKDIR} \
+		CUSTOM=1 BUILDWORLD=1 BUILDKERNEL=1 KERNCONF=${MFSBSD_KERNCONF} \
+		SE=1 BASE=${.OBJDIR} build
+
+mfsbsd-build-install: ${MFSBSD_WRKDIR}/.install_done
+${MFSBSD_WRKDIR}/.install_done:
+	${IMAKE} ${.MAKEFLAGS} -C ${.CURDIR} obj bootonly
+	cd ${MFSBSD_TMPDIR} && ${IMAKE} \
+		${.MAKEFLAGS} MAKEJOBS=${MFSBSD_JOBS} WRKDIR=${MFSBSD_WRKDIR} \
+		KERNCONF=${MFSBSD_KERNCONF} \
+		SE=1 BASE=${.OBJDIR} install
+
+list-mfsbsd:
+	@${ECHO}
+	@${ECHO} "Supported mfsBSD image targets:"
+.for TYPE in ${MFSBSD_TYPES}
+. for FORMAT in ${MFSBSD_FORMATS}
+	@${ECHO} "  ${TYPE}.${FORMAT}: ${${TYPE:tu}${FORMAT:tu}_DESC}"
+. endfor
+.endfor
+
+mfsbsd-install:
+.if defined(WITH_MFSBSD) && !empty(WITH_MFSBSD)
+	mkdir -p ${DESTDIR}/mfsbsdimages
+. for TYPE in ${MFSBSD_TYPES}
+.  for FORMAT in ${MFSBSD_FORMATS}
+	install -m 0644 ${TYPE}.${FORMAT} \
+		${DESTDIR}/mfsbsdimages/${OSRELEASE}-${TYPE}.${FORMAT}
+.  endfor
+. endfor
+	cd ${DESTDIR}/mfsbsdimages && sha512 ${OSRELEASE}* > \
+		${DESTDIR}/mfsbsdimages/CHECKSUM.SHA512
+	cd ${DESTDIR}/mfsbsdimages && sha256 ${OSRELEASE}* > \
+		${DESTDIR}/mfsbsdimages/CHECKSUM.SHA256
+.endif
+
+mfsbsd-release:
+.if defined(WITH_MFSBSD) && !empty(WITH_MFSBSD)
+	${IMAKE} -C ${.CURDIR} ${.MAKEFLAGS} mfsbsd-image
+.endif
+
+mfsbsd-clean:
+	cd ${MFSBSD_DIR} && env MAKEOBJDIR=${MFSBSD_TMPDIR} \
+		${IMAKE} ${.MAKEFLAGS} WRKDIR=${MFSBSD_WRKDIR} clean-all
