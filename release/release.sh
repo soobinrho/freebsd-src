@@ -118,6 +118,9 @@ env_setup() {
 	# cloud providers as part of the release.
 	WITH_CLOUDWARE=
 
+	# Set to non-empty value to build mfsBSD images as part of the release.
+	WITH_MFSBSD=
+
 	return 0
 } # env_setup()
 
@@ -193,7 +196,8 @@ env_check() {
 	RELEASE_RMAKEFLAGS="${ARCH_FLAGS} \
 		KERNCONF=\"${KERNEL}\" ${CONF_FILES} ${SRCPORTS} \
 		WITH_DVD=${WITH_DVD} WITH_VMIMAGES=${WITH_VMIMAGES} \
-		WITH_CLOUDWARE=${WITH_CLOUDWARE} XZ_THREADS=${XZ_THREADS}"
+		WITH_CLOUDWARE=${WITH_CLOUDWARE} WITH_MFSBSD=${WITH_MFSBSD} \
+		XZ_THREADS=${XZ_THREADS}"
 
 	return 0
 } # env_check()

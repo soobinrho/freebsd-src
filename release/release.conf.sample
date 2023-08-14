@@ -114,3 +114,10 @@ PORTBRANCH="main"
 ## If WITH_CLOUDWARE is set to a non-empty value, this is a list of providers
 ## to create disk images.
 #CLOUDWARE="EC2 GCE OCI VAGRANT-VIRTUALBOX VAGRANT-VMWARE"
+
+## Set to a non-empty value to build mfsBSD images as part of the release build.
+#WITH_MFSBSD=
+
+## If WITH_MFSBSD is set to a non-empty value, this is a list of mfsBSD
+## image formats to create.
+#MFSBSD_FORMATS="img iso"
