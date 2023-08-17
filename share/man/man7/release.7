@@ -443,6 +443,40 @@ values, run:
 cd /usr/src
 make -C release list-cloudware
 .Ed
+.Sh MFSBSD IMAGES
+The following
+.Xr make 1
+environmental variables and
+.Fa release.conf
+variables are supported:
+.Bl -tag -width Ev
+.It Va WITH_MFSBSD
+Set to a non-null value to build mfsBSD images as part of the release build.
+.Va WITH_MFSBSD
+may also be specified as an environment variable passed to
+.Xr make 1 .
+.It Va MFSBSD_FORMATS
+Set to the target mfsBSD image format(s) to create. By default,
+.Va img
+and
+.Va iso
+formats are created.
+.El
+.Pp
+Additionally, the
+.Va WITH_MFSBSD
+variable can be added to
+.Pa release.conf ,
+and used in conjunction with
+.Pa release.sh .
+.Pp
+For a list of supported
+.Va MFSBSD_FORMATS
+values, run:
+.Bd -literal -offset indent
+cd /usr/src
+make -C release list-mfsbsd
+.Ed
 .Sh MAKEFILE TARGETS
 The release makefile
 .Pq Pa src/release/Makefile
@@ -514,6 +548,18 @@ virtual machine images for various cloud hosting providers.
 See
 .Qq CLOUD HOSTING MACHINE IMAGES
 for implementation details.
+.It Cm mfsbsd-image
+Creates mfsBSD images in various formats.
+The
+.Cm mfsbsd-image
+target requires the
+.Va WITH_MFSBSD
+.Xr make 1
+environment variable to be set to a non-null value.
+.It Cm list-mfsbsd
+Displays the list of valid
+.Va MFSBSD_FORMATS
+values.
 .It Cm list-cloudware
 Displays the list of valid
 .Va CLOUDWARE
@@ -615,6 +661,7 @@ Typically, one only needs to set
 .It Pa /usr/src/Makefile
 .It Pa /usr/src/Makefile.inc1
 .It Pa /usr/src/release/Makefile
+.It Pa /usr/src/release/Makefile.mfsbsd
 .It Pa /usr/src/release/Makefile.vm
 .It Pa /usr/src/release/release.sh
 .It Pa /usr/src/release/release.conf.sample
